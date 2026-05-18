@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+@source "../components/**/*.{ts,tsx}";
+@source "../lib/**/*.{ts,tsx}";
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -81,4 +84,43 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+}
+
+/* Sombras por estado: CSS plano para que siempre se incluya en el bundle */
+.pc-shadow-new {
+  box-shadow: 0 4px 20px -5px rgb(100 116 139 / 0.22);
+}
+.pc-shadow-ready {
+  box-shadow: 0 4px 20px -5px rgb(59 130 246 / 0.22);
+}
+.pc-shadow-blocked {
+  box-shadow: 0 4px 20px -5px rgb(249 115 22 / 0.22);
+}
+.pc-shadow-running {
+  box-shadow: 0 4px 22px -4px rgb(124 58 237 / 0.26);
+}
+.pc-shadow-done {
+  box-shadow: 0 4px 20px -5px rgb(16 185 129 / 0.22);
+}
+.pc-shadow-error {
+  box-shadow: 0 4px 20px -5px rgb(239 68 68 / 0.22);
+}
+
+.dark .pc-shadow-new {
+  box-shadow: 0 4px 20px -5px rgb(148 163 184 / 0.2);
+}
+.dark .pc-shadow-ready {
+  box-shadow: 0 4px 20px -5px rgb(96 165 250 / 0.24);
+}
+.dark .pc-shadow-blocked {
+  box-shadow: 0 4px 20px -5px rgb(251 146 60 / 0.24);
+}
+.dark .pc-shadow-running {
+  box-shadow: 0 4px 22px -4px rgb(167 139 250 / 0.28);
+}
+.dark .pc-shadow-done {
+  box-shadow: 0 4px 20px -5px rgb(52 211 153 / 0.24);
+}
+.dark .pc-shadow-error {
+  box-shadow: 0 4px 20px -5px rgb(248 113 113 / 0.24);
 }

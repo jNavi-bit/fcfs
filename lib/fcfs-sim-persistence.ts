@@ -8,7 +8,6 @@ export type FcfsSimPersisted = {
   started: boolean;
   inputN: string;
   tickMs: string;
-  newQueueOpen: boolean;
 };
 
 function isRecord(x: unknown): x is Record<string, unknown> {
@@ -40,8 +39,13 @@ export function loadFcfsSimPersisted(): FcfsSimPersisted | null {
     if (typeof data.started !== "boolean") return null;
     if (typeof data.inputN !== "string") return null;
     if (typeof data.tickMs !== "string") return null;
-    if (typeof data.newQueueOpen !== "boolean") return null;
-    return data as FcfsSimPersisted;
+    return {
+      v: 1,
+      sim: data.sim,
+      started: data.started,
+      inputN: data.inputN,
+      tickMs: data.tickMs,
+    };
   } catch {
     return null;
   }

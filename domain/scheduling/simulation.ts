@@ -1,5 +1,10 @@
 import type { OperationSpec } from "./operation";
-import { evaluateOperation, formatOperation, generateRandomOperation } from "./operation";
+import {
+  evaluateOperation,
+  formatOperation,
+  formatOperationValue,
+  generateRandomOperation,
+} from "./operation";
 
 export const MAX_IN_MEMORY = 4;
 export const IO_BLOCK_DURATION = 8;
@@ -91,7 +96,7 @@ function pushFinished(
   if (termination === "error") {
     resultDisplay = "ERROR";
   } else if (opRes.ok) {
-    resultDisplay = String(opRes.value);
+    resultDisplay = formatOperationValue(opRes.value);
   } else {
     resultDisplay = "ERROR";
   }

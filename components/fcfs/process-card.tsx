@@ -12,6 +12,23 @@ export type BlockedIoStrip = {
   progressPct: number;
 };
 
+export type ProcessCardState =
+  | "new"
+  | "ready"
+  | "blocked"
+  | "running"
+  | "done"
+  | "error";
+
+const processCardShadowClass: Record<ProcessCardState, string> = {
+  new: "pc-shadow-new",
+  ready: "pc-shadow-ready",
+  blocked: "pc-shadow-blocked",
+  running: "pc-shadow-running",
+  done: "pc-shadow-done",
+  error: "pc-shadow-error",
+};
+
 type ProcessCardLabels = {
   operation: string;
   progress: string;
@@ -38,6 +55,7 @@ type ProcessCardProps = {
   resultHighlight?: "none" | "success" | "error";
   statusBadge?: string;
   badgeClassName?: string;
+  state?: ProcessCardState;
   emphasis?: boolean;
   compact?: boolean;
   labels: ProcessCardLabels;
@@ -58,6 +76,7 @@ export function ProcessCard({
   resultHighlight = "none",
   statusBadge,
   badgeClassName,
+  state = "ready",
   emphasis = false,
   compact = false,
   labels,
@@ -70,10 +89,11 @@ export function ProcessCard({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-border bg-card text-card-foreground shadow-sm ring-1 ring-border/40 transition-shadow duration-200",
+        "rounded-2xl border border-border bg-card text-card-foreground transition-shadow duration-300",
+        processCardShadowClass[state],
         compact ? "p-4" : "p-5",
         emphasis &&
-          "shadow-md ring-2 ring-primary/25 ring-offset-2 ring-offset-background",
+          "ring-2 ring-primary/25 ring-offset-2 ring-offset-background",
       )}
     >
       <div className="border-border flex flex-col items-center border-b pb-3 text-center">

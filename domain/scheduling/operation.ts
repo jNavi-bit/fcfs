@@ -23,6 +23,17 @@ export function formatOperation(spec: OperationSpec): string {
   return `${spec.left} ${OP_LABEL[spec.kind]} ${spec.right}`;
 }
 
+/** Resultado legible: enteros sin decimales; división con cociente no entero hasta 4 decimales. */
+export function formatOperationValue(value: number): string {
+  if (!Number.isFinite(value)) return String(value);
+  if (Number.isInteger(value)) return String(value);
+  const rounded = Math.round(value * 10_000) / 10_000;
+  return rounded
+    .toFixed(4)
+    .replace(/(\.\d*?[1-9])0+$/, "$1")
+    .replace(/\.0+$/, "");
+}
+
 export function evaluateOperation(spec: OperationSpec): OperationResult {
   const { kind, left, right } = spec;
   switch (kind) {
@@ -34,7 +45,7 @@ export function evaluateOperation(spec: OperationSpec): OperationResult {
       return { ok: true, value: left * right };
     case "div":
       if (right === 0) return { ok: false, reason: "div_zero" };
-      return { ok: true, value: Math.trunc(left / right) };
+      return { ok: true, value: left / right };
     case "mod":
       if (right === 0) return { ok: false, reason: "mod_zero" };
       return { ok: true, value: left % right };

@@ -7,7 +7,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   CheckCircle2,
-  ChevronDown,
   Cpu,
   Layers,
   Pause,
@@ -38,7 +37,6 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -80,7 +78,11 @@ const motionItem = {
 };
 
 const emptySubcardClass =
-  "text-muted-foreground rounded-xl border border-dashed border-border bg-muted/15 px-4 py-8 text-center text-sm leading-relaxed";
+  "text-muted-foreground box-border flex h-28 w-full items-center justify-center rounded-xl border border-dashed border-border bg-muted/15 px-4 text-center text-sm leading-snug";
+
+const columnTitleInHeaderClass = "mb-1.5 min-h-10";
+const sectionLabelBelowTitleClass = "mb-2";
+const sectionLabelInBlockClass = "mb-2";
 
 function opLine(spec: OperationSpec): string {
   return formatOperation(spec);
@@ -95,32 +97,41 @@ function memoryUsed(s: SimulationState): number {
   return s.readyQueue.length + s.blockedQueue.length + (s.running ? 1 : 0);
 }
 
-function KbdStrip({ label }: { label: string }) {
+function SettingsPanelSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
-    <div
-      className="text-muted-foreground flex items-center gap-1.5"
-      aria-label={label}
-    >
-      <span className="hidden text-[10px] font-semibold uppercase tracking-wider sm:inline">
-        {label}
-      </span>
-      <div className="flex gap-1">
-        {(["E", "W", "P", "C"] as const).map((k) => (
-          <kbd
-            key={k}
-            className="border-border bg-muted text-foreground flex h-7 min-w-[26px] items-center justify-center rounded-md border px-1 font-mono text-[10px] font-semibold shadow-sm outline-none transition-colors hover:bg-muted/80 focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {k}
-          </kbd>
-        ))}
+    <section>
+      <h3 className="text-muted-foreground mb-2 text-[10px] font-bold uppercase tracking-[0.16em]">
+        {title}
+      </h3>
+      <div className="border-border bg-muted/20 space-y-3 rounded-lg border p-3">
+        {children}
       </div>
-    </div>
+    </section>
   );
 }
 
-function ColumnTitle({ icon: Icon, title }: { icon: LucideIcon; title: string }) {
+function ColumnTitle({
+  icon: Icon,
+  title,
+  className,
+}: {
+  icon: LucideIcon;
+  title: string;
+  className?: string;
+}) {
   return (
-    <div className="mb-4 flex shrink-0 items-center gap-3">
+    <div
+      className={cn(
+        "mb-4 flex shrink-0 items-center gap-3",
+        className,
+      )}
+    >
       <div className="bg-muted text-primary border-border flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-inner">
         <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
       </div>
@@ -170,14 +181,62 @@ function KeyboardHelp() {
   );
 }
 
-function QueueBlock({ title, children }: { title: string; children: ReactNode }) {
+const sectionLabelClass =
+  "text-muted-foreground text-[10px] font-bold uppercase tracking-[0.2em]";
+
+function SectionLabel({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <p className={cn(sectionLabelClass, className)}>{children}</p>;
+}
+
+function PrimaryColumnHeader({
+  icon,
+  title,
+  sectionLabel,
+}: {
+  icon: LucideIcon;
+  title: string;
+  sectionLabel: string;
+}) {
   return (
-    <div className="py-1">
-      <h3 className="text-muted-foreground mb-3 text-[10px] font-bold uppercase tracking-[0.2em]">
-        {title}
-      </h3>
-      <div className="space-y-3">{children}</div>
-    </div>
+    <header className="shrink-0">
+      <ColumnTitle icon={icon} title={title} className={columnTitleInHeaderClass} />
+      <SectionLabel className={sectionLabelBelowTitleClass}>
+        {sectionLabel}
+      </SectionLabel>
+    </header>
+  );
+}
+
+function EmptySubcard({ children }: { children: ReactNode }) {
+  return (
+    <p role="status" className={emptySubcardClass}>
+      {children}
+    </p>
+  );
+}
+
+function ColumnSection({
+  label,
+  children,
+  hideLabel,
+}: {
+  label: string;
+  children: ReactNode;
+  hideLabel?: boolean;
+}) {
+  return (
+    <section>
+      {hideLabel ? null : (
+        <SectionLabel className={sectionLabelInBlockClass}>{label}</SectionLabel>
+      )}
+      {children}
+    </section>
   );
 }
 
@@ -197,18 +256,16 @@ export function FcfsSimulator() {
   const uiRef = useRef({
     inputN: "8",
     tickMs: "550",
-    newQueueOpen: false,
   });
   const persistSnapshot = useRef(() => {});
 
   const [started, setStarted] = useState(false);
   const [inputN, setInputN] = useState("8");
   const [tickMs, setTickMs] = useState("550");
-  const [newQueueOpen, setNewQueueOpen] = useState(false);
   const reduceMotion = useReducedMotion();
 
   startedRef.current = started;
-  uiRef.current = { inputN, tickMs, newQueueOpen };
+  uiRef.current = { inputN, tickMs };
 
   persistSnapshot.current = () => {
     if (typeof window === "undefined") return;
@@ -222,7 +279,6 @@ export function FcfsSimulator() {
       started: true,
       inputN: uiRef.current.inputN,
       tickMs: uiRef.current.tickMs,
-      newQueueOpen: uiRef.current.newQueueOpen,
     });
   };
 
@@ -239,7 +295,6 @@ export function FcfsSimulator() {
     setStarted(true);
     setInputN(p.inputN);
     setTickMs(p.tickMs);
-    setNewQueueOpen(p.newQueueOpen);
     dispatchRender();
   }, []);
 
@@ -333,7 +388,6 @@ export function FcfsSimulator() {
   const finishedSorted = [...snapshot.finished].sort((a, b) => a.id - b.id);
   const metricsRows = finishedSorted.map((f) => computeMetrics(f));
   const newSorted = [...snapshot.newQueue].sort((a, b) => a.id - b.id);
-
   const tableHeadClass =
     "text-muted-foreground h-11 text-xs font-semibold uppercase tracking-wide";
   const rowHover = "border-border/40 transition-colors hover:bg-muted/40";
@@ -394,8 +448,32 @@ export function FcfsSimulator() {
         }
         statusBadge={badgeLabel}
         badgeClassName={badgeClass}
+        state={variant}
         compact
         labels={labelsForCard}
+      />
+    );
+  };
+
+  const runningCard = () => {
+    const p = snapshot.running;
+    if (!p) return null;
+    return (
+      <ProcessCard
+        id={p.id}
+        headline={procHeadline(p.id)}
+        opKindLabel={tipo(p.operation.kind)}
+        operationLine={opLine(p.operation)}
+        resultOrPending="?"
+        tme={p.tme}
+        cpuElapsed={p.cpuElapsed}
+        remaining={Math.max(0, p.tme - p.cpuElapsed)}
+        progressPct={p.tme > 0 ? (p.cpuElapsed / p.tme) * 100 : 0}
+        progressVariant="default"
+        statusBadge={tDash("badgeCpu")}
+        state="running"
+        compact
+        labels={cardLabels}
       />
     );
   };
@@ -415,7 +493,9 @@ export function FcfsSimulator() {
         headline={procHeadline(f.id)}
         opKindLabel={tipo(f.operation.kind)}
         operationLine={f.operationLabel}
-        resultOrPending={f.resultDisplay}
+        resultOrPending={
+          err || f.resultDisplay === "ERROR" ? tS("error") : f.resultDisplay
+        }
         tme={f.tme}
         cpuElapsed={f.cpuElapsed}
         remaining={rest}
@@ -428,6 +508,7 @@ export function FcfsSimulator() {
             ? "border-destructive/50 bg-destructive/10 text-destructive"
             : "border-emerald-600/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-300"
         }
+        state={err ? "error" : "done"}
         compact
         labels={cardLabels}
       />
@@ -548,74 +629,73 @@ export function FcfsSimulator() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  sideOffset={6}
-                  className="border-border bg-popover text-popover-foreground w-[min(calc(100vw-1rem),20rem)] p-3"
+                  sideOffset={8}
+                  className="border-border bg-popover text-popover-foreground w-[min(calc(100vw-2rem),18rem)] overflow-hidden rounded-xl p-0 shadow-lg"
                   onCloseAutoFocus={(e) => e.preventDefault()}
                 >
                   <div
-                    className="space-y-4"
+                    className="border-border border-b px-3 py-2.5"
                     onPointerDown={(e) => e.stopPropagation()}
                   >
-                    <div className="space-y-1.5">
-                      <Label
-                        htmlFor="n-proc"
-                        className="text-muted-foreground text-xs font-medium"
-                      >
-                        {tC("initialProcessCount")}
-                      </Label>
-                      <Input
-                        id="n-proc"
-                        type="number"
-                        min={1}
-                        max={64}
-                        value={inputN}
-                        onChange={(e) => setInputN(e.target.value)}
-                        disabled={started && !complete}
-                        className="bg-background h-9 w-full rounded-lg border font-mono text-sm shadow-sm"
-                      />
-                    </div>
-
-                    <DropdownMenuSeparator />
-
-                    <div className="space-y-1.5">
-                      <Label
-                        htmlFor="tick-ms"
-                        className="text-muted-foreground text-xs font-medium"
-                      >
-                        {tDash("tickMsLabel")}
-                      </Label>
-                      <div className="border-border bg-muted/30 flex h-9 items-center gap-2 rounded-lg border px-2">
-                        <Timer className="text-primary h-4 w-4 shrink-0" aria-hidden />
+                    <p className="text-sm font-semibold leading-none">
+                      {tDash("headerMore")}
+                    </p>
+                  </div>
+                  <div
+                    className="space-y-4 p-3"
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <SettingsPanelSection title={tDash("settingsSectionSim")}>
+                      <div className="space-y-1.5">
+                        <Label
+                          htmlFor="n-proc"
+                          className="text-muted-foreground text-xs font-medium"
+                        >
+                          {tC("initialProcessCount")}
+                        </Label>
                         <Input
-                          id="tick-ms"
+                          id="n-proc"
                           type="number"
-                          min={50}
-                          max={5000}
-                          step={50}
-                          value={tickMs}
-                          onChange={(e) => setTickMs(e.target.value)}
-                          className="h-8 min-w-0 flex-1 border-0 bg-transparent font-mono text-sm shadow-none focus-visible:ring-0"
+                          min={1}
+                          max={64}
+                          value={inputN}
+                          onChange={(e) => setInputN(e.target.value)}
+                          disabled={started && !complete}
+                          className="bg-background h-9 w-full rounded-lg border font-mono text-sm shadow-sm"
                         />
-                        <span className="text-muted-foreground shrink-0 text-[10px] font-medium">
-                          ms
-                        </span>
                       </div>
-                    </div>
+                      <div className="space-y-1.5">
+                        <Label
+                          htmlFor="tick-ms"
+                          className="text-muted-foreground text-xs font-medium"
+                        >
+                          {tDash("tickMsLabel")}
+                        </Label>
+                        <div className="border-border bg-background flex h-9 items-center gap-2 rounded-lg border px-2 shadow-sm">
+                          <Timer
+                            className="text-primary h-4 w-4 shrink-0"
+                            aria-hidden
+                          />
+                          <Input
+                            id="tick-ms"
+                            type="number"
+                            min={50}
+                            max={5000}
+                            step={50}
+                            value={tickMs}
+                            onChange={(e) => setTickMs(e.target.value)}
+                            className="h-8 min-w-0 flex-1 border-0 bg-transparent font-mono text-sm shadow-none focus-visible:ring-0"
+                          />
+                          <span className="text-muted-foreground shrink-0 text-[10px] font-medium">
+                            ms
+                          </span>
+                        </div>
+                      </div>
+                    </SettingsPanelSection>
 
-                    <DropdownMenuSeparator />
-
-                    <div className="space-y-2">
-                      <KbdStrip label={tDash("shortcuts")} />
-                    </div>
-
-                    <DropdownMenuSeparator />
-
-                    <div className="space-y-2">
-                      <p className="text-muted-foreground text-xs font-medium">
-                        {tLoc("label")}
-                      </p>
-                      <LocaleSwitcher variant="dashboard" />
-                    </div>
+                    <SettingsPanelSection title={tLoc("label")}>
+                      <LocaleSwitcher variant="settings" />
+                    </SettingsPanelSection>
 
                     <div className="space-y-2">
                       <p className="text-muted-foreground text-xs font-medium">
@@ -662,164 +742,89 @@ export function FcfsSimulator() {
           variants={motionStagger}
           initial="hidden"
           animate="show"
-          className="grid min-h-0 items-stretch gap-6 lg:grid-cols-3 lg:gap-7"
+          className="grid items-start gap-6 lg:grid-cols-3 lg:gap-7"
         >
           <motion.section
             variants={motionItem}
-            className="border-border bg-card flex h-full min-h-[20rem] w-full flex-col overflow-hidden rounded-2xl border p-4 shadow-sm ring-1 ring-border/30 md:min-h-[26rem] lg:min-h-[28rem] sm:p-5"
+            className="border-border bg-card flex w-full flex-col self-start rounded-2xl border p-4 shadow-sm ring-1 ring-border/30 sm:p-5"
           >
-            <ColumnTitle icon={Layers} title={tDash("columnQueues")} />
-
-            <ScrollArea className="min-h-0 flex-1 pr-3">
-              <div className="space-y-8 pb-2">
-                <QueueBlock title={tDash("groupReady")}>
-                  {snapshot.readyQueue.length === 0 ? (
-                    <p className={emptySubcardClass}>
-                      {tDash("emptyReady")}
-                    </p>
-                  ) : (
-                    snapshot.readyQueue.map((p) => liveCard(p, "ready"))
-                  )}
-                </QueueBlock>
-
-                <div className="py-1">
-                  <button
-                    type="button"
-                    id="new-queue-toggle"
-                    className="hover:bg-muted/40 mb-2 flex w-full items-center justify-between gap-2 rounded-lg py-1.5 pr-1 pl-0 text-left transition-colors"
-                    aria-expanded={newQueueOpen}
-                    aria-controls="new-queue-panel"
-                    aria-label={tDash("toggleNewQueue")}
-                    onClick={() => setNewQueueOpen((o) => !o)}
-                  >
-                    <div className="min-w-0">
-                      <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-[0.2em]">
-                        {tDash("groupNew")}
-                      </span>
-                      <span className="text-muted-foreground mt-0.5 flex flex-wrap items-baseline gap-1 text-sm">
-                        {tQ("newCount")}{" "}
-                        {reduceMotion ? (
-                          <span className="text-foreground font-mono font-semibold tabular-nums">
-                            ({newSorted.length})
-                          </span>
-                        ) : (
-                          <motion.span
-                            key={newSorted.length}
-                            initial={false}
-                            animate={{
-                              scale: [1, 1.12, 1],
-                              opacity: [1, 0.85, 1],
-                            }}
-                            transition={{
-                              duration: 0.35,
-                              ease: [0.22, 1, 0.36, 1],
-                            }}
-                            className="text-foreground font-mono font-semibold tabular-nums inline-block origin-left"
-                          >
-                            ({newSorted.length})
-                          </motion.span>
-                        )}
-                      </span>
-                    </div>
-                    <ChevronDown
-                      className={cn(
-                        "text-muted-foreground h-5 w-5 shrink-0 transition-transform duration-200",
-                        newQueueOpen && "rotate-180",
-                      )}
-                      aria-hidden
-                    />
-                  </button>
-                  {newQueueOpen ? (
-                    <div id="new-queue-panel" className="space-y-3">
-                      {newSorted.length === 0 ? (
-                        <p className={emptySubcardClass}>
-                          {tDash("emptyNew")}
-                        </p>
-                      ) : (
-                        newSorted.map((p) => liveCard(p, "new"))
-                      )}
-                    </div>
-                  ) : null}
-                </div>
+            <PrimaryColumnHeader
+              icon={Layers}
+              title={tDash("columnNew")}
+              sectionLabel={tDash("legendNew")}
+            />
+            <ScrollArea>
+              <div className="pb-2">
+                {newSorted.length === 0 ? (
+                  <EmptySubcard>{tDash("emptyNew")}</EmptySubcard>
+                ) : (
+                  <div className="space-y-3">
+                    {newSorted.map((p) => liveCard(p, "new"))}
+                  </div>
+                )}
               </div>
             </ScrollArea>
           </motion.section>
 
           <motion.section
             variants={motionItem}
-            className="border-border bg-card flex h-full min-h-[20rem] w-full flex-col overflow-hidden rounded-2xl border p-4 shadow-sm ring-1 ring-border/30 md:min-h-[26rem] lg:min-h-[28rem] sm:p-5"
+            className="border-border bg-card flex w-full flex-col self-start rounded-2xl border p-4 shadow-sm ring-1 ring-border/30 sm:p-5"
           >
-            <ColumnTitle icon={Cpu} title={tQ("running")} />
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="w-full shrink-0">
-                {snapshot.running ? (
-                  <ProcessCard
-                    id={snapshot.running.id}
-                    headline={procHeadline(snapshot.running.id)}
-                    opKindLabel={tipo(snapshot.running.operation.kind)}
-                    operationLine={opLine(snapshot.running.operation)}
-                    resultOrPending="?"
-                    tme={snapshot.running.tme}
-                    cpuElapsed={snapshot.running.cpuElapsed}
-                    remaining={Math.max(
-                      0,
-                      snapshot.running.tme - snapshot.running.cpuElapsed,
-                    )}
-                    progressPct={
-                      snapshot.running.tme > 0
-                        ? (snapshot.running.cpuElapsed /
-                            snapshot.running.tme) *
-                          100
-                        : 0
-                    }
-                    progressVariant="default"
-                    statusBadge={tDash("badgeCpu")}
-                    compact
-                    labels={cardLabels}
-                  />
-                ) : (
-                  <div
-                    role="status"
-                    className={cn(
-                      emptySubcardClass,
-                      "flex min-h-[10rem] items-center justify-center",
-                    )}
-                  >
-                    {tDash("cpuIdle")}
-                  </div>
-                )}
+            <PrimaryColumnHeader
+              icon={Cpu}
+              title={tDash("columnMemory")}
+              sectionLabel={tQ("running")}
+            />
+            <ScrollArea>
+              <div className="space-y-8 pb-2">
+                <ColumnSection label={tQ("running")} hideLabel>
+                  {snapshot.running ? (
+                    runningCard()
+                  ) : (
+                    <EmptySubcard>{tDash("cpuIdle")}</EmptySubcard>
+                  )}
+                </ColumnSection>
+                <ColumnSection label={tDash("groupReady")}>
+                  {snapshot.readyQueue.length > 0 ? (
+                    <div className="space-y-3">
+                      {snapshot.readyQueue.map((p) => liveCard(p, "ready"))}
+                    </div>
+                  ) : (
+                    <EmptySubcard>{tDash("emptyReady")}</EmptySubcard>
+                  )}
+                </ColumnSection>
+                <ColumnSection label={tQ("blocked")}>
+                  {snapshot.blockedQueue.length > 0 ? (
+                    <div className="space-y-3">
+                      {snapshot.blockedQueue.map((p) =>
+                        liveCard(p, "blocked"),
+                      )}
+                    </div>
+                  ) : (
+                    <EmptySubcard>{tDash("emptyBlocked")}</EmptySubcard>
+                  )}
+                </ColumnSection>
               </div>
-
-              {snapshot.blockedQueue.length > 0 ? (
-                <div className="border-border mt-3 w-full shrink-0 border-t pt-3">
-                  <h3 className="text-muted-foreground mb-2 text-[10px] font-bold uppercase tracking-[0.2em]">
-                    {tQ("blocked")}
-                  </h3>
-                  <div className="space-y-3">
-                    {snapshot.blockedQueue.map((p) => liveCard(p, "blocked"))}
-                  </div>
-                </div>
-              ) : snapshot.running ? (
-                <p role="status" className={cn(emptySubcardClass, "mt-2 shrink-0")}>
-                  {tDash("emptyBlocked")}
-                </p>
-              ) : null}
-            </div>
+            </ScrollArea>
           </motion.section>
 
           <motion.section
             variants={motionItem}
-            className="border-border bg-card flex h-full min-h-[20rem] w-full flex-col overflow-hidden rounded-2xl border p-4 shadow-sm ring-1 ring-border/30 md:min-h-[26rem] lg:min-h-[28rem] sm:p-5"
+            className="border-border bg-card flex w-full flex-col self-start rounded-2xl border p-4 shadow-sm ring-1 ring-border/30 sm:p-5"
           >
-            <ColumnTitle icon={CheckCircle2} title={tQ("terminated")} />
-            <ScrollArea className="min-h-0 flex-1 pr-3">
-              <div className="space-y-3 pr-2 pb-2">
+            <PrimaryColumnHeader
+              icon={CheckCircle2}
+              title={tQ("terminated")}
+              sectionLabel={tDash("legendDone")}
+            />
+            <ScrollArea>
+              <div className="pb-2">
                 {finishedSorted.length === 0 ? (
-                  <p className={emptySubcardClass}>
-                    {tDash("emptyDone")}
-                  </p>
+                  <EmptySubcard>{tDash("emptyDone")}</EmptySubcard>
                 ) : (
-                  finishedSorted.map((f) => finishedCard(f))
+                  <div className="space-y-3">
+                    {finishedSorted.map((f) => finishedCard(f))}
+                  </div>
                 )}
               </div>
             </ScrollArea>
@@ -897,7 +902,11 @@ export function FcfsSimulator() {
                           <TableCell className="text-muted-foreground tabular-nums">
                             {m.tme}
                           </TableCell>
-                          <TableCell className="font-mono">{m.resultDisplay}</TableCell>
+                          <TableCell className="font-mono">
+                            {m.finishedNormally
+                              ? m.resultDisplay
+                              : tS("error")}
+                          </TableCell>
                           <TableCell className="text-muted-foreground tabular-nums">
                             {m.arrivalTick}
                           </TableCell>
