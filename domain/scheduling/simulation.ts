@@ -146,7 +146,6 @@ export function isSimulationComplete(s: SimulationState): boolean {
   return s.finished.length === s.allProcesses.length;
 }
 
-/** Un quantum: tiempo lógico pasa de `t` a `t + 1`. */
 export function tickSimulation(s: SimulationState): void {
   if (s.paused || isSimulationComplete(s)) return;
   const t = s.globalClock;

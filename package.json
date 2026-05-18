@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node scripts/check-proxy-only.cjs && next dev",
     "build": "node scripts/check-proxy-only.cjs && next build",
+    "build:gh-pages": "node scripts/check-proxy-only.cjs && node scripts/build-gh-pages.cjs",
     "start": "next start",
     "lint": "eslint ."
   },

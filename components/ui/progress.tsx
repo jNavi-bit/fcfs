@@ -7,7 +7,6 @@ export type ProgressVariant = "default" | "blocked" | "success" | "error";
 type ProgressProps = {
   value: number;
   className?: string;
-  /** Gradiente según contexto (CPU/listo, bloqueado, terminado OK, error). */
   variant?: ProgressVariant;
 };
 

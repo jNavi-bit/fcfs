@@ -17,7 +17,8 @@
 /.next/
 /out/
 
-# production
+# GitHub Pages build backup (no debe quedar en repo; por si falla el script)
+proxy.ghpages-build.bak.ts
 /build
 
 # misc

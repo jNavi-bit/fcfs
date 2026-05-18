@@ -6,6 +6,23 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
+export type BlockedIoStrip = {
+  elapsedTicks: number;
+  remainingTicks: number;
+  progressPct: number;
+};
+
+type ProcessCardLabels = {
+  operation: string;
+  progress: string;
+  tme: string;
+  exec: string;
+  rest: string;
+  blockedIoProgress?: string;
+  blockedIoElapsed?: string;
+  blockedIoRemaining?: string;
+};
+
 type ProcessCardProps = {
   id: number;
   headline?: string;
@@ -17,18 +34,13 @@ type ProcessCardProps = {
   remaining: number;
   progressPct: number;
   progressVariant?: ProgressVariant;
+  blockedIo?: BlockedIoStrip;
   resultHighlight?: "none" | "success" | "error";
   statusBadge?: string;
   badgeClassName?: string;
   emphasis?: boolean;
   compact?: boolean;
-  labels: {
-    operation: string;
-    progress: string;
-    tme: string;
-    exec: string;
-    rest: string;
-  };
+  labels: ProcessCardLabels;
 };
 
 export function ProcessCard({
@@ -42,6 +54,7 @@ export function ProcessCard({
   remaining,
   progressPct,
   progressVariant = "default",
+  blockedIo,
   resultHighlight = "none",
   statusBadge,
   badgeClassName,
@@ -51,7 +64,8 @@ export function ProcessCard({
 }: ProcessCardProps) {
   const line = headline ?? `#${id}`;
   const reduceMotion = useReducedMotion();
-  const pct = Math.round(progressPct);
+  const cpuPct = Math.round(progressPct);
+  const ioPct = blockedIo ? Math.round(blockedIo.progressPct) : 0;
 
   return (
     <div
@@ -158,33 +172,84 @@ export function ProcessCard({
         ))}
       </div>
 
-      <div className={cn("mt-4 space-y-1.5", compact && "mt-3")}>
-        <div className="text-muted-foreground flex items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-wide">
-          <span>{labels.progress}</span>
-          {reduceMotion ? (
-            <span className="font-mono text-foreground/90">{pct}%</span>
-          ) : (
-            <motion.span
-              key={pct}
-              initial={{ scale: 0.88, opacity: 0.6 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{
-                type: "spring",
-                stiffness: 450,
-                damping: 24,
-              }}
-              className="font-mono text-foreground/90 inline-block tabular-nums"
-            >
-              {pct}%
-            </motion.span>
-          )}
+      {blockedIo &&
+      labels.blockedIoProgress &&
+      labels.blockedIoElapsed &&
+      labels.blockedIoRemaining ? (
+        <div className="mt-4 space-y-2">
+          <div className="grid grid-cols-2 gap-2 text-center">
+            <div className="border-border/70 bg-muted/20 rounded-lg border px-2 py-2">
+              <div className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+                {labels.blockedIoElapsed}
+              </div>
+              <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums">
+                {blockedIo.elapsedTicks}
+              </div>
+            </div>
+            <div className="border-border/70 bg-muted/20 rounded-lg border px-2 py-2">
+              <div className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+                {labels.blockedIoRemaining}
+              </div>
+              <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums">
+                {blockedIo.remainingTicks}
+              </div>
+            </div>
+          </div>
+          <div className="text-muted-foreground flex items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-wide">
+            <span>{labels.blockedIoProgress}</span>
+            {reduceMotion ? (
+              <span className="font-mono text-foreground/90">{ioPct}%</span>
+            ) : (
+              <motion.span
+                key={ioPct}
+                initial={{ scale: 0.88, opacity: 0.6 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 450,
+                  damping: 24,
+                }}
+                className="font-mono text-foreground/90 inline-block tabular-nums"
+              >
+                {ioPct}%
+              </motion.span>
+            )}
+          </div>
+          <Progress
+            value={blockedIo.progressPct}
+            variant="blocked"
+            className="h-1.5"
+          />
         </div>
-        <Progress
-          value={progressPct}
-          variant={progressVariant}
-          className="h-1.5"
-        />
-      </div>
+      ) : (
+        <div className={cn("mt-4 space-y-1.5", compact && "mt-3")}>
+          <div className="text-muted-foreground flex items-center justify-center gap-2 text-[10px] font-semibold uppercase tracking-wide">
+            <span>{labels.progress}</span>
+            {reduceMotion ? (
+              <span className="font-mono text-foreground/90">{cpuPct}%</span>
+            ) : (
+              <motion.span
+                key={cpuPct}
+                initial={{ scale: 0.88, opacity: 0.6 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 450,
+                  damping: 24,
+                }}
+                className="font-mono text-foreground/90 inline-block tabular-nums"
+              >
+                {cpuPct}%
+              </motion.span>
+            )}
+          </div>
+          <Progress
+            value={progressPct}
+            variant={progressVariant}
+            className="h-1.5"
+          />
+        </div>
+      )}
     </div>
   );
 }

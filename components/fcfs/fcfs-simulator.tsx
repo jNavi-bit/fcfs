@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import type { LucideIcon } from "lucide-react";
@@ -56,6 +56,11 @@ import {
 import { LocaleSwitcher } from "@/components/locale-switcher";
 import { ModeToggle } from "@/components/mode-toggle";
 import { ProcessCard } from "@/components/fcfs/process-card";
+import {
+  clearFcfsSimPersisted,
+  loadFcfsSimPersisted,
+  saveFcfsSimPersisted,
+} from "@/lib/fcfs-sim-persistence";
 import { cn } from "@/lib/utils";
 
 const motionStagger = {
@@ -74,10 +79,8 @@ const motionItem = {
   },
 };
 
-function useForceRender() {
-  const [, dispatch] = useReducer((x: number) => x + 1, 0);
-  return useCallback(() => dispatch(), []);
-}
+const emptySubcardClass =
+  "text-muted-foreground rounded-xl border border-dashed border-border bg-muted/15 px-4 py-8 text-center text-sm leading-relaxed";
 
 function opLine(spec: OperationSpec): string {
   return formatOperation(spec);
@@ -189,12 +192,56 @@ export function FcfsSimulator() {
   const tTheme = useTranslations("theme");
 
   const stateRef = useRef<SimulationState>(createInitialState());
-  const force = useForceRender();
+  const [, dispatchRender] = useReducer((x: number) => x + 1, 0);
+  const startedRef = useRef(false);
+  const uiRef = useRef({
+    inputN: "8",
+    tickMs: "550",
+    newQueueOpen: false,
+  });
+  const persistSnapshot = useRef(() => {});
+
   const [started, setStarted] = useState(false);
   const [inputN, setInputN] = useState("8");
   const [tickMs, setTickMs] = useState("550");
   const [newQueueOpen, setNewQueueOpen] = useState(false);
   const reduceMotion = useReducedMotion();
+
+  startedRef.current = started;
+  uiRef.current = { inputN, tickMs, newQueueOpen };
+
+  persistSnapshot.current = () => {
+    if (typeof window === "undefined") return;
+    if (!startedRef.current) {
+      clearFcfsSimPersisted();
+      return;
+    }
+    saveFcfsSimPersisted({
+      v: 1,
+      sim: stateRef.current,
+      started: true,
+      inputN: uiRef.current.inputN,
+      tickMs: uiRef.current.tickMs,
+      newQueueOpen: uiRef.current.newQueueOpen,
+    });
+  };
+
+  const force = useCallback(() => {
+    dispatchRender();
+    queueMicrotask(() => persistSnapshot.current());
+  }, []);
+
+  useLayoutEffect(() => {
+    const p = loadFcfsSimPersisted();
+    if (!p?.started) return;
+    stateRef.current = p.sim;
+    startedRef.current = true;
+    setStarted(true);
+    setInputN(p.inputN);
+    setTickMs(p.tickMs);
+    setNewQueueOpen(p.newQueueOpen);
+    dispatchRender();
+  }, []);
 
   const snapshot = stateRef.current;
   const complete = isSimulationComplete(snapshot);
@@ -263,13 +310,16 @@ export function FcfsSimulator() {
     const n = Math.floor(Number(inputN));
     if (!Number.isFinite(n) || n < 1 || n > 64) return;
     stateRef.current = buildSimulationFromCount(n);
+    startedRef.current = true;
     setStarted(true);
     force();
   };
 
   const onReset = () => {
     stateRef.current = createInitialState();
+    startedRef.current = false;
     setStarted(false);
+    clearFcfsSimPersisted();
     force();
   };
 
@@ -290,12 +340,13 @@ export function FcfsSimulator() {
 
   const liveCard = (p: SimProcess, variant: "new" | "ready" | "blocked") => {
     const rest = Math.max(0, p.tme - p.cpuElapsed);
-    let progress = 0;
-    if (variant === "blocked") {
-      progress = (p.blockedSessionTicks / IO_BLOCK_DURATION) * 100;
-    } else if (p.tme > 0) {
-      progress = (p.cpuElapsed / p.tme) * 100;
-    }
+    const cpuProgress = p.tme > 0 ? (p.cpuElapsed / p.tme) * 100 : 0;
+    const ioProgress =
+      IO_BLOCK_DURATION > 0
+        ? (p.blockedSessionTicks / IO_BLOCK_DURATION) * 100
+        : 0;
+    const ioRemaining = Math.max(0, IO_BLOCK_DURATION - p.blockedSessionTicks);
+
     const badgeLabel =
       variant === "new"
         ? tDash("badgeNew")
@@ -309,7 +360,16 @@ export function FcfsSimulator() {
           ? "border-primary/40 bg-primary/10 text-primary"
           : "border-orange-500/40 bg-orange-500/10 text-orange-900 dark:text-orange-200";
 
-    const progressVariant = variant === "blocked" ? "blocked" : "default";
+    const labelsForCard =
+      variant === "blocked"
+        ? {
+            ...cardLabels,
+            blockedIoProgress: tDash("blockedIoProgress"),
+            blockedIoElapsed: tDash("blockedIoElapsed"),
+            blockedIoRemaining: tDash("blockedIoRemaining"),
+          }
+        : cardLabels;
+
     return (
       <ProcessCard
         key={`${variant}-${p.id}`}
@@ -321,12 +381,21 @@ export function FcfsSimulator() {
         tme={p.tme}
         cpuElapsed={p.cpuElapsed}
         remaining={rest}
-        progressPct={progress}
-        progressVariant={progressVariant}
+        progressPct={cpuProgress}
+        progressVariant="default"
+        blockedIo={
+          variant === "blocked"
+            ? {
+                elapsedTicks: p.blockedSessionTicks,
+                remainingTicks: ioRemaining,
+                progressPct: ioProgress,
+              }
+            : undefined
+        }
         statusBadge={badgeLabel}
         badgeClassName={badgeClass}
         compact
-        labels={cardLabels}
+        labels={labelsForCard}
       />
     );
   };
@@ -593,7 +662,7 @@ export function FcfsSimulator() {
           variants={motionStagger}
           initial="hidden"
           animate="show"
-          className="grid min-h-0 items-stretch gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(260px,0.95fr)_minmax(0,1fr)] lg:gap-7"
+          className="grid min-h-0 items-stretch gap-6 lg:grid-cols-3 lg:gap-7"
         >
           <motion.section
             variants={motionItem}
@@ -605,7 +674,7 @@ export function FcfsSimulator() {
               <div className="space-y-8 pb-2">
                 <QueueBlock title={tDash("groupReady")}>
                   {snapshot.readyQueue.length === 0 ? (
-                    <p className="text-muted-foreground rounded-lg border border-dashed border-border py-6 text-center text-sm">
+                    <p className={emptySubcardClass}>
                       {tDash("emptyReady")}
                     </p>
                   ) : (
@@ -663,7 +732,7 @@ export function FcfsSimulator() {
                   {newQueueOpen ? (
                     <div id="new-queue-panel" className="space-y-3">
                       {newSorted.length === 0 ? (
-                        <p className="text-muted-foreground rounded-lg border border-dashed border-border py-6 text-center text-sm">
+                        <p className={emptySubcardClass}>
                           {tDash("emptyNew")}
                         </p>
                       ) : (
@@ -709,7 +778,13 @@ export function FcfsSimulator() {
                     labels={cardLabels}
                   />
                 ) : (
-                  <div className="text-muted-foreground border-border bg-muted/20 flex min-h-[10rem] items-center justify-center rounded-xl border border-dashed px-4 py-8 text-center text-sm">
+                  <div
+                    role="status"
+                    className={cn(
+                      emptySubcardClass,
+                      "flex min-h-[10rem] items-center justify-center",
+                    )}
+                  >
                     {tDash("cpuIdle")}
                   </div>
                 )}
@@ -725,7 +800,7 @@ export function FcfsSimulator() {
                   </div>
                 </div>
               ) : snapshot.running ? (
-                <p className="text-muted-foreground border-border/60 mt-2 shrink-0 border-t pt-2 text-center text-[11px] leading-snug">
+                <p role="status" className={cn(emptySubcardClass, "mt-2 shrink-0")}>
                   {tDash("emptyBlocked")}
                 </p>
               ) : null}
@@ -740,7 +815,7 @@ export function FcfsSimulator() {
             <ScrollArea className="min-h-0 flex-1 pr-3">
               <div className="space-y-3 pr-2 pb-2">
                 {finishedSorted.length === 0 ? (
-                  <p className="text-muted-foreground rounded-lg border border-dashed border-border py-6 text-center text-sm">
+                  <p className={emptySubcardClass}>
                     {tDash("emptyDone")}
                   </p>
                 ) : (

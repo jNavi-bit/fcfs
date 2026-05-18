@@ -37,9 +37,7 @@ function readStoredTheme(
   try {
     const v = localStorage.getItem(storageKey);
     if (v === "light" || v === "dark" || v === "system") return v;
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   return fallback;
 }
 
@@ -78,7 +76,6 @@ export type AppThemeProviderProps = {
   children: ReactNode;
   defaultTheme?: ThemeName;
   storageKey?: string;
-  /** Compatibilidad con la API anterior (next-themes). */
   attribute?: string;
   enableSystem?: boolean;
   enableColorScheme?: boolean;
@@ -142,9 +139,7 @@ export function ThemeProvider({
       setThemeState(next);
       try {
         localStorage.setItem(storageKey, next);
-      } catch {
-        /* ignore */
-      }
+      } catch {}
       const effective = resolve(next);
       setResolvedTheme(effective);
       applyDom(effective, enableColorScheme);

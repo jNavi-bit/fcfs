@@ -1,7 +1,3 @@
-/**
- * Next.js 16: no pueden coexistir middleware.ts y proxy.ts en la raíz del proyecto.
- * @see https://nextjs.org/docs/messages/middleware-to-proxy
- */
 const fs = require("fs");
 const path = require("path");
 

@@ -1,7 +1,3 @@
-/**
- * Capa de aplicación: orquesta reglas de negocio del dominio de planificación.
- * La UI debe preferir importar desde aquí para mantener el acoplamiento explícito.
- */
 export {
   buildSimulationFromCount,
   computeMetrics,
